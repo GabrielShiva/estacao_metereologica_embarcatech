@@ -7,6 +7,7 @@
 
 #define WIDTH 128
 #define HEIGHT 64
+#define DISP_ADDR 0x3C
 
 typedef enum {
   SET_CONTRAST = 0x81,
@@ -41,6 +42,7 @@ void ssd1306_setup(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_
 void ssd1306_config(ssd1306_t *ssd);
 void ssd1306_command(ssd1306_t *ssd, uint8_t command);
 void ssd1306_send_data(ssd1306_t *ssd);
+void ssd1306_initialize(ssd1306_t *ssd);
 
 void ssd1306_pixel(ssd1306_t *ssd, uint8_t x, uint8_t y, bool value);
 void ssd1306_fill(ssd1306_t *ssd, bool value);

@@ -40,6 +40,12 @@
     "files.associations": {
         "stdlib.h": "c",
         "pio.h": "c",
-        "clocks.h": "c"
+        "clocks.h": "c",
+        "tcp.h": "c",
+        "i2c_protocol.h": "c",
+        "ssd1306.h": "c",
+        "ws2812b.h": "c",
+        "pwm.h": "c",
+        "buzzer.h": "c"
     }
 }

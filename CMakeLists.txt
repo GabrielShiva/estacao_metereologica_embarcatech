@@ -38,6 +38,7 @@ add_executable(estacao_metereologica_web
     inc/buzzer/buzzer.c
     inc/led_matrix/ws2812b.c
     inc/led_rgb/led.c
+    inc/i2c_protocol/i2c_protocol.c
 )
 
 pico_set_program_name(estacao_metereologica_web "estacao_metereologica_web")

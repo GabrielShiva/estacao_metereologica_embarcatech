@@ -1,5 +1,6 @@
 #include "bmp280.h"
 #include "hardware/i2c.h"
+#include <math.h>
 
 #define ADDR _u(0x76)
 
@@ -97,6 +98,9 @@ void bmp280_get_calib_params(i2c_inst_t *i2c, struct bmp280_calib_param* params)
     params->dig_p7 = (int16_t)(buf[19] << 8) | buf[18];
     params->dig_p8 = (int16_t)(buf[21] << 8) | buf[20];
     params->dig_p9 = (int16_t)(buf[23] << 8) | buf[22];
+}
 
-
+// Função para calcular a altitude a partir da pressão atmosférica
+double calculate_altitude(double pressure) {
+    return 44330.0 * (1.0 - pow(pressure / SEA_LEVEL_PRESSURE, 0.1903));
 }

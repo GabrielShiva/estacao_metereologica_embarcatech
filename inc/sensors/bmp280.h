@@ -45,6 +45,8 @@
 
 #define NUM_CALIB_PARAMS 24
 
+#define SEA_LEVEL_PRESSURE 101325.0 // Pressão ao nível do mar em Pa
+
 struct bmp280_calib_param {
     uint16_t dig_t1;
     int16_t dig_t2;
@@ -67,5 +69,6 @@ void bmp280_reset(i2c_inst_t *i2c);
 int32_t bmp280_convert_temp(int32_t temp, struct bmp280_calib_param* params);
 int32_t bmp280_convert_pressure(int32_t pressure, int32_t temp, struct bmp280_calib_param* params);
 void bmp280_get_calib_params(i2c_inst_t *i2c, struct bmp280_calib_param* params);
+double calculate_altitude(double pressure);
 
 #endif
