@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include "pico/stdlib.h"
 
+#include "hardware/i2c.h"
+
 #define I2C0_PORT i2c0
 #define I2C0_SDA 0
 #define I2C0_SCL 1

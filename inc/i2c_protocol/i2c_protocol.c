@@ -9,8 +9,8 @@ void i2c_setup(uint8_t sda_pin, uint8_t scl_pin) {
         i2c_init(I2C1_PORT, 400 * 1000);
     }
 
-    gpio_set_function(sda_pin, GPIO_FUNC_I2C);                    // Set the GPIO pin function to I2C
-    gpio_set_function(scl_pin, GPIO_FUNC_I2C);                    // Set the GPIO pin function to I2C
-    gpio_pull_up(sda_pin);                                        // Pull up the data line
+    gpio_set_function(sda_pin, GPIO_FUNC_I2C);
+    gpio_set_function(scl_pin, GPIO_FUNC_I2C);
+    gpio_pull_up(sda_pin);
     gpio_pull_up(scl_pin);
 }

@@ -70,7 +70,7 @@ void aht20_reset(i2c_inst_t *i2c) {
     uint8_t reset_cmd = AHT20_CMD_RESET;
     i2c_write_blocking(i2c, AHT20_I2C_ADDR, &reset_cmd, 1, false);
     sleep_ms(20);
-    aht20_init(i2c);
+    aht20_setup(i2c);
 }
 
 bool aht20_check(i2c_inst_t *i2c) {

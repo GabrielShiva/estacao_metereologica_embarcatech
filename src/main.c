@@ -21,6 +21,7 @@
 
 #include "secret.h" // Arquivo com os parâmetros para acessso de rede
 
+// Definição de variáveis e macros importantes para o debounce dos botões
 #define DEBOUNCE_TIME 260
 
 static volatile uint32_t last_btn_a_press = 0;
@@ -33,24 +34,34 @@ struct http_state {
     size_t sent;
 };
 
-// Definições de estrutura que armazena os dados coletados pelos sensores
-typedef struct weather_station {
-    float pressure;
-    float temperature;
-    float humidity;
-    float altitude;
-    float temperature_min;
-    float temperature_max;
-    float humidity_min;
-    float humidity_max;
-} weather_station_t;
+// Definições de estrutura e variável que armazena os dados coletados pelos sensores
+typedef struct sensors_data {
+    int32_t pressure;
+    int32_t temperature;
+    int32_t humidity;
+    int32_t altitude;
+    int32_t temperature_min;
+    int32_t temperature_max;
+    int32_t humidity_min;
+    int32_t humidity_max;
+} sensors_data_t;
 
+static sensors_data_t sensors_data = {0, 0, 0, 0, 10, 70, 25, 60};
+
+// Estrutura para armazenar os dados do sensor AHT20 e BMP280
+AHT20_Data sensor_aht_data;
+int32_t sensor_bmp_temperature;
+int32_t sensor_bmp_pressure;
+int32_t sensor_bmp_altitude;
+
+// Definição do protótipo das funções que serão criadas
 void gpio_irq_handler(uint gpio, uint32_t events);
 static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 static err_t connection_callback(void *arg, struct tcp_pcb *newpcb, err_t err);
 static void start_http_server(void);
 
+// Função principal do sistema
 int main() {
     stdio_init_all();
 
@@ -98,8 +109,26 @@ int main() {
     start_http_server();
 
     while (true) {
-        printf("Hello, world!\n");
-        sleep_ms(1000);
+        // Mantém o módulo wifi ativo
+        cyw43_arch_poll();
+
+        // Realiza leitura do AHT20
+        aht20_read(I2C0_PORT, &sensor_aht_data);
+
+        printf("Temperatura AHT: %.2f C\n", sensor_aht_data.temperature);
+        printf("Umidade AHT: %.2f %%\n\n\n", sensor_aht_data.humidity);
+
+        // Realiza leitura do BMP280
+        bmp280_read_raw(I2C0_PORT, &sensor_bmp_temperature, &sensor_bmp_pressure);
+        int32_t temperature = bmp280_convert_temp(sensor_bmp_temperature, &params);
+        int32_t pressure = bmp280_convert_pressure(sensor_bmp_pressure, sensor_bmp_temperature, &params);
+        double altitude = calculate_altitude(pressure);
+
+        printf("Pressao BMP = %.3f kPa\n", pressure / 1000.0);
+        printf("Temperatura BMP: %.2f C\n", temperature / 100.0);
+        printf("Altitude BMP: %.2f m\n", altitude);
+
+        sleep_ms(4000);
     }
 }
 
@@ -146,74 +175,9 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
     }
     hs->sent = 0;
 
-    if (strstr(req, "POST /api/limits"))
-    {
-        char *body = strstr(req, "\r\n\r\n");
-        if (body)
-        {
-            body += 4;
-
-            // Extrai os valores diretamente usando sscanf
-            int max_val, min_val;
-            if (sscanf(body, "{\"max\":%d,\"min\":%d", &max_val, &min_val) == 2)
-            {
-                // Valida os valores recebidos
-                if (max_val >= 0 && max_val <= 100 && min_val >= 0 && min_val <= 100)
-                {
-                    weather_data.maxTemperature = max_val;
-                    weather_data.minTemperature = min_val;
-                }
-            }
-        }
-
-        printf("Novos limites: Max=%d, Min=%d\n",
-               weather_data.maxTemperature,
-               weather_data.minTemperature);
-
-        // Confirma atualização
-        const char *txt = "Limites atualizados";
-        hs->len = snprintf(hs->response, sizeof(hs->response),
-                           "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/plain\r\n"
-                           "Content-Length: %d\r\n"
-                           "\r\n"
-                           "%s",
-                           (int)strlen(txt), txt);
-    }
-    else if (strstr(req, "GET /api/weather"))
-    {
-        // Responde com os dados atuais
-        /* printf("Altura: %.2f m\n", weather_data.altitude);
-        printf("Temperatura: %.2f C\n", weather_data.temperature);
-        printf("Umidade: %.2f %%\n", weather_data.humidity);
-        printf("Pressão: %.2f kPa\n", weather_data.pressure);
-        printf("Min Temp: %d C, Max Temp: %d C\n",
-               weather_data.minTemperature, weather_data.maxTemperature); */
-
-        char json_data[256];
-        snprintf(json_data, sizeof(json_data),
-                 "{\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"altitude\":%.2f,\"minTemperature\":%d,\"maxTemperature\":%d}",
-                 weather_data.temperature, weather_data.humidity, weather_data.pressure, weather_data.altitude, weather_data.minTemperature, weather_data.maxTemperature);
-
-        hs->len = snprintf(hs->response, sizeof(hs->response),
-                           "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: application/json\r\n"
-                           "Content-Length: %d\r\n"
-                           "\r\n"
-                           "%s",
-                           (int)strlen(json_data), json_data);
-    }
-    else
-    {
-        hs->len = snprintf(hs->response, sizeof(hs->response),
-                           "HTTP/1.1 200 OK\r\n"
-                           "Content-Type: text/html\r\n"
-                           "Content-Length: %d\r\n"
-                           "Connection: close\r\n"
-                           "\r\n"
-                           "%s",
-                           (int)strlen(html_data), html_data);
-    }
+    // aqui fica os endpoints
+    //
+    //
 
     tcp_arg(tpcb, hs);
     tcp_sent(tpcb, http_sent);

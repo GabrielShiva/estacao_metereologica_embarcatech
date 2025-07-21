@@ -24,11 +24,6 @@ project(estacao_metereologica_web C CXX ASM)
 
 pico_sdk_init()
 
-include_directories(
-    ${CMAKE_SOURCE_DIR}/inc
-    ${CMAKE_SOURCE_DIR}/src
-)
-
 add_executable(estacao_metereologica_web
     src/main.c
     inc/sensors/aht20.c
@@ -41,36 +36,45 @@ add_executable(estacao_metereologica_web
     inc/i2c_protocol/i2c_protocol.c
 )
 
-pico_set_program_name(estacao_metereologica_web "estacao_metereologica_web")
-pico_set_program_version(estacao_metereologica_web "0.1")
+include_directories(
+    ${CMAKE_SOURCE_DIR}/inc
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
+pico_set_program_version(${PROJECT_NAME} "0.1")
 
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/inc/led_matrix/ws2812b.pio)
 
-pico_enable_stdio_uart(estacao_metereologica_web 0)
-pico_enable_stdio_usb(estacao_metereologica_web 1)
+pico_enable_stdio_uart(${PROJECT_NAME} 1)
+pico_enable_stdio_usb(${PROJECT_NAME} 1)
 
-target_link_libraries(estacao_metereologica_web
+# Add the standard library to the build
+target_link_libraries(${PROJECT_NAME}
+        pico_stdlib)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/inc
+        ${CMAKE_CURRENT_LIST_DIR}/src
+        ${PICO_SDK_PATH}/lib/lwip/src/include
+        ${PICO_SDK_PATH}/lib/lwip/src/include/arch
+        ${PICO_SDK_PATH}/lib/lwip/src/include/lwip
+)
+
+target_sources(${PROJECT_NAME} PRIVATE
+    ${PICO_SDK_PATH}/lib/lwip/src/apps/http/httpd.c
+    ${PICO_SDK_PATH}/lib/lwip/src/apps/http/fs.c
+)
+
+target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     hardware_i2c
     hardware_pio
     pico_cyw43_arch_lwip_threadsafe_background
-    hardware_adc
     hardware_pwm
+    hardware_adc
     hardware_clocks
 )
 
-target_include_directories(estacao_metereologica_web PRIVATE
-        ${CMAKE_CURRENT_LIST_DIR}
-        ${CMAKE_CURRENT_LIST_DIR}/inc
-        ${CMAKE_CURRENT_LIST_DIR}/src
-        ${PICO_SDK_PATH}/inc/lwip/src/include
-        ${PICO_SDK_PATH}/inc/lwip/src/include/arch
-        ${PICO_SDK_PATH}/inc/lwip/src/include/lwip
-)
-
-target_sources(${PROJECT_NAME} PRIVATE
-    ${PICO_SDK_PATH}/inc/lwip/src/apps/http/httpd.c
-    ${PICO_SDK_PATH}/inc/lwip/src/apps/http/fs.c
-)
-
-pico_add_extra_outputs(estacao_metereologica_web)
+pico_add_extra_outputs(${PROJECT_NAME})
