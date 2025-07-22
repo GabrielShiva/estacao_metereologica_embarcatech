@@ -87,6 +87,19 @@ int main() {
     aht20_reset(I2C0_PORT);
     aht20_setup(I2C0_PORT);
 
+    //Inicialização do barramento I2C para o display
+    i2c_setup(I2C1_SDA, I2C1_SCL);
+
+    // Inicializa o display
+    ssd1306_t ssd;
+    ssd1306_setup(&ssd, WIDTH, HEIGHT, false, DISP_ADDR, I2C1_PORT);
+    ssd1306_config(&ssd);
+    ssd1306_send_data(&ssd);
+
+    // Limpa o display. O display inicia com todos os pixels apagados.
+    ssd1306_fill(&ssd, false);
+    ssd1306_send_data(&ssd);
+
     // Estrutura para armazenar os dados do sensor
     AHT20_Data aht20_data;
     int32_t raw_temp_bmp;
@@ -112,6 +125,12 @@ int main() {
     // Inicializa o servidor
     http_server_init();
 
+    char str_tmp[5];
+    char str_alt[5];
+    char str_umi[5];
+    char str_pres[5];
+
+    bool color = true;
     while (true) {
         // Mantém o módulo wifi ativo
         cyw43_arch_poll();
@@ -134,7 +153,34 @@ int main() {
         // printf("Altitude: %.2f m\n", sensors_data.altitude);
         // printf("Umidade: %.2f %%\n", sensors_data.humidity);
 
-        sleep_ms(600);
+        // Exibe os dados no display
+        sprintf(str_tmp, "%.1f ºC", sensors_data.temperature);
+        sprintf(str_alt, "%.0f m", sensors_data.altitude);
+        sprintf(str_umi, "%.1f %%", sensors_data.humidity);
+        sprintf(str_pres, "%.1f hPa", sensors_data.pressure);
+
+        //  Atualiza o conteúdo do display com animações
+            ssd1306_fill(&ssd, !color);
+            ssd1306_rect(&ssd, 2, 2, 124, 62, true, false);
+            ssd1306_draw_string(&ssd, "ESTACAO", 4, 6);
+            ssd1306_draw_string(&ssd, "METEOROLOGICA", 4, 14);
+            ssd1306_line(&ssd, 3, 23, 123, 23, true); // linha horizontal - primeira
+            ssd1306_line(&ssd, 61, 23, 61, 63, true); // linha vertical
+            ssd1306_draw_string(&ssd, "TEMP", 4, 25);
+            sprintf(str_tmp, "%.1fC", sensors_data.temperature);
+            ssd1306_draw_string(&ssd, str_tmp, 64, 25);
+            ssd1306_draw_string(&ssd, "UMID", 4, 35);
+            sprintf(str_umi, "%.1f%%", sensors_data.humidity);
+            ssd1306_draw_string(&ssd, str_umi, 64, 35);
+            ssd1306_draw_string(&ssd, "ALTI", 4, 45);
+            sprintf(str_alt, "%.1fm", sensors_data.altitude);
+            ssd1306_draw_string(&ssd, str_alt, 64, 45);
+            ssd1306_draw_string(&ssd, "PRES", 4, 55);
+            sprintf(str_pres, "%.1fhPa", sensors_data.pressure);
+            ssd1306_draw_string(&ssd, str_pres, 64, 55);
+            ssd1306_send_data(&ssd);
+
+        sleep_ms(200);
     }
 }
 
@@ -188,35 +234,43 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
 
     // Definição dos endpoints do servidor
     // O endpoint abaixo atualiza os valores limites dos sensores
-    if (strstr(req, "POST /api/sensors/limits/update")) {
+    if (strstr(req, "GET /api/sensors/limits/update?")) {
         bool temperatureLimitsUpdated = false;
         bool humidityLimitsUpdated = false;
+
+        printf("LIMITES CHEGARAM\n\n");
 
         // Obtém o conteúdo da requisição
         char *content = strstr(req, "\r\n\r\n");
         if (content) {
             content += 4;
 
-            int temperature_min, temperature_max, humidity_min, humidity_max;
+            float temperature_min = 0, temperature_max = 0;
+            float humidity_min = 0, humidity_max = 0;
 
-            // Recupera os limites das grandezas físicas informados pelo usuário
-            if (sscanf(content, "{\"temperature_min\":%d,\"temperature_max\":%d,\"humidity_min\":%d,\"humidity_max\":%d", &temperature_min, &temperature_max, &humidity_min, &humidity_max) == 4) {
-                // Faz validação dos dados
-                if (temperature_max >= 0 && temperature_max <= 100 && temperature_min >= 0 && temperature_min <= 100) {
-                    if (temperature_min < temperature_max) {
-                        sensors_data.temperature_min = temperature_min;
-                        sensors_data.temperature_max = temperature_max;
-                        temperatureLimitsUpdated = true;
-                    }
+            // Procura e extrai os valores da query string
+            sscanf(req,
+                "GET /api/sensors/limits/update?temperature_min=%f&temperature_max=%f&humidity_min=%f&humidity_max=%f",
+                &temperature_min, &temperature_max, &humidity_min, &humidity_max
+            );
+
+            printf("%.2f %.2f %.2f %.2f \n\n", temperature_min, temperature_max, humidity_min, humidity_max);
+
+            // Faz validação dos dados
+            if (temperature_max >= 0 && temperature_max <= 100 && temperature_min >= 0 && temperature_min <= 100) {
+                if (temperature_min < temperature_max) {
+                    sensors_data.temperature_min = temperature_min;
+                    sensors_data.temperature_max = temperature_max;
+                    temperatureLimitsUpdated = true;
                 }
+            }
 
-                // Faz validação dos dados
-                if (humidity_max >= 0 && humidity_max <= 100 && humidity_min >= 0 && humidity_min <= 100) {
-                    if (humidity_min < humidity_max) {
-                        sensors_data.humidity_min = humidity_min;
-                        sensors_data.humidity_max = humidity_max;
-                        humidityLimitsUpdated = true;
-                    }
+            // Faz validação dos dados
+            if (humidity_max >= 0 && humidity_max <= 100 && humidity_min >= 0 && humidity_min <= 100) {
+                if (humidity_min < humidity_max) {
+                    sensors_data.humidity_min = humidity_min;
+                    sensors_data.humidity_max = humidity_max;
+                    humidityLimitsUpdated = true;
                 }
             }
         }
@@ -227,26 +281,26 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
             printf("Temperatura Min=%d, Temperatura Max=%d\n", sensors_data.temperature_min, sensors_data.temperature_max);
             printf("Umidade Min=%d, Umidade Max=%d\n", sensors_data.humidity_min, sensors_data.humidity_max);
 
-            const char *txt = "Limites atualizados";
+            const char *response_msg = "{\"status\":\"ok\",\"message\":\"Limites atualizados\"}";
             hs->len = snprintf(hs->response, sizeof(hs->response),
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
                 "%s",
-                (int)strlen(txt), txt
+                (int)strlen(response_msg), response_msg
             );
         } else {
-             printf("---- Falha ao atualizar os limites ----\n");
+            printf("---- Falha ao atualizar os limites ----\n");
 
-            const char *txt = "Falha ao atualizar os limites";
+            const char *response_msg = "{\"status\":\"wrong\",\"message\":\"Falha ao atualizar os limites\"}";
             hs->len = snprintf(hs->response, sizeof(hs->response),
                 "HTTP/1.1 500 Internal Server Error\r\n"
                 "Content-Type: text/plain\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
                 "%s",
-                (int)strlen(txt), txt
+                (int)strlen(response_msg), response_msg
             );
         }
 

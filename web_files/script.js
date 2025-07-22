@@ -34,7 +34,8 @@
 // getCoordinates();
 
 let currentMetric = 'temperature';
-const numberOfPoints = 100;
+const numberOfPoints = 25;
+let limitsUpdateCounter = 0;
 
 // Gráficos
 let plotData = {
@@ -111,10 +112,12 @@ chart.render();
 
 // Atualiza os valores dos sensores e cards
 function updateSensorInputs(values) {
-    document.getElementById('temperature-min').value = values.temperature_min;
-    document.getElementById('temperature-max').value = values.temperature_max;
-    document.getElementById('humidity-min').value = values.humidity_min;
-    document.getElementById('humidity-max').value = values.humidity_max;
+    if (limitsUpdateCounter == 0) {
+        document.getElementById('temperature-min').value = values.temperature_min;
+        document.getElementById('temperature-max').value = values.temperature_max;
+        document.getElementById('humidity-min').value = values.humidity_min;
+        document.getElementById('humidity-max').value = values.humidity_max;
+    }
 
     document.getElementById('temperature-limits-box').textContent = `MIN: ${values.temperature_min} ºC | MAX:  ${values.temperature_max} ºC`;
     document.getElementById('humidity-limits-box').textContent = `MIN: ${values.humidity_min}% | MAX: ${values.humidity_max}%`;
@@ -139,10 +142,12 @@ async function updateData() {
 
         updateSensorInputs(sensors_limit_values);
 
+        limitsUpdateCounter++;
+
         // Atualiza os cards superiores
-        document.getElementById('pressure-box').textContent    = `${Math.round(pressureValue)} kPa`;
+        document.getElementById('pressure-box').textContent    = `${Math.round(pressureValue)} hPa`;
         document.getElementById('temperature-box').textContent = `${Math.round(temperatureValue)} °C`;
-        document.getElementById('humidity-box').textContent    = `${Math.round(humidityValue)} %`;
+        document.getElementById('humidity-box').textContent    = `${Math.round(humidityValue)}%`;
         document.getElementById('altitude-box').textContent    = `${Math.round(altitudeValue)} m`;
 
         // Atualiza o relógio mostrado
@@ -155,13 +160,13 @@ async function updateData() {
         plotData.humidity.push(humidityValue);
         plotData.categories.push(now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
-        // Mantém o gráfico com 15 pontos
-        // if (plotData.temperature.length > 15) {
-        //     plotData.temperature.shift();
-        //     plotData.humidity.shift();
-        //     plotData.pressure.shift();
-        //     plotData.categories.shift();
-        // }
+        // Mantém o gráfico com 25 pontos
+        if (plotData.temperature.length > numberOfPoints) {
+             plotData.temperature.shift();
+             plotData.humidity.shift();
+             plotData.pressure.shift();
+             plotData.categories.shift();
+        }
 
         // Atualiza o gráfico com os novos dados da métrica ativa
         updateChartSeries();
@@ -212,21 +217,18 @@ document.getElementById('plots-card-control').addEventListener('click', (e) => {
 });
 
 async function updateLimits(params) {
-    const url = "/api/sensors/limits/update";
+    // Cria a URL com os parâmetros GET
+    const queryParams = new URLSearchParams({
+        temperature_min: params.temperature_min,
+        temperature_max: params.temperature_max,
+        humidity_min: params.humidity_min,
+        humidity_max: params.humidity_max
+    });
+
+    const url = `/api/sensors/limits/update?${queryParams.toString()}`;
 
     try {
-        const response = await fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                temperature_min: params.temperature_min,
-                temperature_max: params.temperature_max,
-                humidity_min: params.humidity_min,
-                humidity_max: params.humidity_max
-            })
-        });
+        const response = await fetch(url);
 
         if (!response.ok) {
             console.log("Erro ao salvar os limites!!!");
@@ -243,7 +245,6 @@ async function updateLimits(params) {
         sensors_limit_values.humidity_max    = params.humidity_max;
 
         updateSensorInputs(sensors_limit_values);
-        // console.log("Resposta do servidor:", data);
     } catch (error) {
         console.error("Erro na requisição:", error);
     }
@@ -255,9 +256,9 @@ document.getElementById('btn-sensors-levels').addEventListener('click', function
         temperature_max: document.getElementById('temperature-max').value,
         humidity_min: document.getElementById('humidity-min').value,
         humidity_max: document.getElementById('humidity-max').value
-};
+    };
 
-updateLimits(sensors_limit_to_update);
+    updateLimits(sensors_limit_to_update);
 });
 
 setInterval(updateData, 2000);
