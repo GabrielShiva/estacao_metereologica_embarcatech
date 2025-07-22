@@ -29,6 +29,9 @@
 static volatile uint32_t last_btn_a_press = 0;
 static volatile uint32_t last_btn_b_press = 0;
 
+// Define a página que é exibida no display
+static volatile bool display_page = 0;
+
 // Definições do servidor HTTP
 struct http_state {
     char response[12288];
@@ -153,13 +156,14 @@ int main() {
         // printf("Altitude: %.2f m\n", sensors_data.altitude);
         // printf("Umidade: %.2f %%\n", sensors_data.humidity);
 
-        // Exibe os dados no display
-        sprintf(str_tmp, "%.1f ºC", sensors_data.temperature);
-        sprintf(str_alt, "%.0f m", sensors_data.altitude);
-        sprintf(str_umi, "%.1f %%", sensors_data.humidity);
-        sprintf(str_pres, "%.1f hPa", sensors_data.pressure);
+        if (display_page) {
+            // Exibe os dados no display
+            sprintf(str_tmp, "%.1f ºC", sensors_data.temperature);
+            sprintf(str_alt, "%.0f m", sensors_data.altitude);
+            sprintf(str_umi, "%.1f %%", sensors_data.humidity);
+            sprintf(str_pres, "%.1f hPa", sensors_data.pressure);
 
-        //  Atualiza o conteúdo do display com animações
+            //  Atualiza o conteúdo do display com animações
             ssd1306_fill(&ssd, !color);
             ssd1306_rect(&ssd, 2, 2, 124, 62, true, false);
             ssd1306_draw_string(&ssd, "ESTACAO", 4, 6);
@@ -179,6 +183,16 @@ int main() {
             sprintf(str_pres, "%.1fhPa", sensors_data.pressure);
             ssd1306_draw_string(&ssd, str_pres, 54, 55);
             ssd1306_send_data(&ssd);
+        } else {
+            ssd1306_fill(&ssd, !color);
+            ssd1306_rect(&ssd, 2, 2, 124, 62, true, false);
+            ssd1306_draw_string(&ssd, "ESTACAO", 4, 6);
+            ssd1306_draw_string(&ssd, "METEOROLOGICA", 4, 14);
+            ssd1306_line(&ssd, 3, 23, 123, 23, true); // linha horizontal - primeira
+            ssd1306_draw_string(&ssd, "IP", 4, 25);
+            ssd1306_draw_string(&ssd, ip_str, 4, 33);
+            ssd1306_send_data(&ssd);
+        }
 
         sleep_ms(200);
     }
@@ -191,7 +205,7 @@ void gpio_irq_handler(uint gpio, uint32_t events) {
     // Muda a página exibida no display
     if (gpio == BTN_A_PIN && (current_time - last_btn_a_press > DEBOUNCE_TIME)) {
         last_btn_a_press = current_time;
-
+        display_page = !display_page;
     // Coloca o raspberry no modo de BOOTSEL
     } else if (gpio == BTN_B_PIN && (current_time - last_btn_b_press > DEBOUNCE_TIME)) {
         last_btn_b_press = current_time;
