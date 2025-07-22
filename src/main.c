@@ -34,7 +34,7 @@ static volatile bool display_page = 0;
 
 // Definições do servidor HTTP
 struct http_state {
-    char response[12288];
+    char response[14000];
     size_t len;
     size_t sent;
 };
@@ -49,12 +49,16 @@ typedef struct sensors_data {
     float temperature_max;
     float humidity_min;
     float humidity_max;
+    float temperature_offset;
+    float humidity_offset;
+    float pressure_offset;
 } sensors_data_t;
 
-static sensors_data_t sensors_data = {0, 0, 0, 0, 10.0, 40.0, 20.0, 60.0};
+static sensors_data_t sensors_data = {0, 0, 0, 0, 10.0, 45.0, 20.0, 75.0, 0, 0, 0};
 
 // Definição do protótipo das funções que serão criadas
 void gpio_irq_handler(uint gpio, uint32_t events);
+void checkLimitValues(sensors_data_t *sensors_data);
 static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 static err_t connection_callback(void *arg, struct tcp_pcb *newpcb, err_t err);
@@ -63,8 +67,6 @@ static void http_server_init(void);
 // Função principal do sistema
 int main() {
     stdio_init_all();
-
-    sleep_ms(5500);
 
     // Iniciallização dos botões
     btns_init();
@@ -76,7 +78,7 @@ int main() {
     leds_init();
 
     // Inicialização dos buzzers
-    buzzer_setup(BUZZER_RIGHT_PIN, 4.0f);
+    buzzer_setup(BUZZER_RIGHT_PIN);
 
     // Inicialização do barramento I2C sensores AHT20 e BMP280
     i2c_setup(I2C0_SDA, I2C0_SCL);
@@ -140,16 +142,16 @@ int main() {
 
         // Realiza leitura do AHT20
         aht20_read(I2C0_PORT, &aht20_data);
-        sensors_data.humidity = aht20_data.humidity;
+        sensors_data.humidity = aht20_data.humidity + sensors_data.humidity_offset;
 
         // Realiza leitura do BMP280
         bmp280_read_raw(I2C0_PORT, &raw_temp_bmp, &raw_pressure_bmp);
         sensors_data.temperature = bmp280_convert_temp(raw_temp_bmp, &params);
-        sensors_data.temperature /= 100.0;
+        sensors_data.temperature = (sensors_data.temperature / 100.0) + sensors_data.temperature_offset;
 
         sensors_data.pressure = bmp280_convert_pressure(raw_pressure_bmp, raw_temp_bmp, &params);
-        sensors_data.pressure /= 100.0;
-        sensors_data.altitude = calculate_altitude(sensors_data.pressure * 100);
+        sensors_data.pressure = (sensors_data.pressure / 100.0) + sensors_data.pressure_offset;
+        sensors_data.altitude = calculate_altitude(sensors_data.pressure * 100.0);
 
         // printf("Pressao: %.2f hPa\n", sensors_data.pressure);
         // printf("Temperatura: %.2f C\n", sensors_data.temperature);
@@ -194,7 +196,27 @@ int main() {
             ssd1306_send_data(&ssd);
         }
 
-        sleep_ms(200);
+        // checa valores e liga/desliga alerta
+        checkLimitValues(&sensors_data);
+
+        sleep_ms(10);
+    }
+}
+
+// Verifica os valores limites e emite os alertas
+void checkLimitValues(sensors_data_t *data) {
+    if ((data->temperature < data->temperature_min || data->temperature > data->temperature_max) ||
+        (data->humidity < data->humidity_min || data->humidity > data->humidity_max)) {
+
+        leds_turnoff();
+        set_led_red();
+
+        buzzer_play(BUZZER_RIGHT_PIN, 1000);
+    } else {
+
+        leds_turnoff();
+        set_led_blue();
+        buzzer_stop(BUZZER_RIGHT_PIN);
     }
 }
 
@@ -341,6 +363,46 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
         );
 
     // O endpoint abaixo retorna a página html base
+    } else if (strstr(req, "GET /api/sensors/offsets?")) {
+
+        // Obtém o conteúdo da requisição
+        char *content = strstr(req, "\r\n\r\n");
+        if (content) {
+            content += 4;
+
+            // Definição de offsets
+            float temperature_offset = 0.0, humidity_offset = 0.0, pressure_offset = 0.0;
+
+            // Procura e extrai os valores da query string
+            sscanf(req,
+                "GET /api/sensors/offsets?temperature_offset=%f&humidity_offset=%f&pressure_offset=%f",
+                &temperature_offset, &humidity_offset, &pressure_offset
+            );
+
+            printf("%.2f %.2f %.2f \n\n", temperature_offset, humidity_offset, pressure_offset);
+
+            if (temperature_offset >= 0 && temperature_offset <= 100) {
+                sensors_data.temperature_offset = temperature_offset;
+            }
+
+            if (humidity_offset >= 0 && humidity_offset <= 100) {
+                sensors_data.humidity_offset = humidity_offset;
+            }
+
+            if (pressure_offset >= 0 && pressure_offset <= 100) {
+                sensors_data.pressure_offset = pressure_offset;
+            }
+
+            const char *response_msg = "{\"status\":\"ok\",\"message\":\"Offsets atualizados\"}";
+            hs->len = snprintf(hs->response, sizeof(hs->response),
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: %d\r\n"
+                "\r\n"
+                "%s",
+                (int)strlen(response_msg), response_msg
+            );
+        }
     } else {
         printf("chegou aqui\n");
         hs->len = snprintf(hs->response, sizeof(hs->response),

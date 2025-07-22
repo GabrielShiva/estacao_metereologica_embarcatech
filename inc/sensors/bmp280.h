@@ -69,6 +69,6 @@ void bmp280_reset(i2c_inst_t *i2c);
 int32_t bmp280_convert_temp(int32_t temp, struct bmp280_calib_param* params);
 int32_t bmp280_convert_pressure(int32_t pressure, int32_t temp, struct bmp280_calib_param* params);
 void bmp280_get_calib_params(i2c_inst_t *i2c, struct bmp280_calib_param* params);
-double calculate_altitude(double pressure);
+double calculate_altitude(float pressure);
 
 #endif

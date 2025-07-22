@@ -7,7 +7,8 @@
 #define BUZZER_LEFT_PIN 21
 #define BUZZER_RIGHT_PIN 10
 
-int buzzer_setup(uint gpio_pin, float clk_div);
+void pwm_set_frequency(uint gpio_pin, float frequency);
+void buzzer_setup(uint gpio_pin);
 void buzzer_play(uint gpio_pin, uint frequency);
 void buzzer_stop(uint gpio_pin);
 

@@ -261,6 +261,6 @@ document.getElementById('btn-sensors-levels').addEventListener('click', function
     updateLimits(sensors_limit_to_update);
 });
 
-setInterval(updateData, 2000);
+setInterval(updateData, 1000);
 updateSensorInputs(sensors_limit_values);
 updateData();

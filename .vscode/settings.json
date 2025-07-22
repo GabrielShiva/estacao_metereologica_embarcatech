@@ -48,6 +48,7 @@
         "pwm.h": "c",
         "buzzer.h": "c",
         "index_html.h": "c",
-        "lwipopts_examples_common.h": "c"
+        "lwipopts_examples_common.h": "c",
+        "led.h": "c"
     }
 }

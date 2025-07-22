@@ -101,6 +101,6 @@ void bmp280_get_calib_params(i2c_inst_t *i2c, struct bmp280_calib_param* params)
 }
 
 // Função para calcular a altitude a partir da pressão atmosférica
-double calculate_altitude(double pressure) {
-    return 44330.0 * (1.0 - pow(pressure / SEA_LEVEL_PRESSURE, 0.1903));
+double calculate_altitude(float pressure) {
+    return (double)(44330.0 * (1.0 - pow(pressure / SEA_LEVEL_PRESSURE, 0.1903)));
 }
