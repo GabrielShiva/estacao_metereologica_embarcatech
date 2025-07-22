@@ -46,6 +46,8 @@
         "ssd1306.h": "c",
         "ws2812b.h": "c",
         "pwm.h": "c",
-        "buzzer.h": "c"
+        "buzzer.h": "c",
+        "index_html.h": "c",
+        "lwipopts_examples_common.h": "c"
     }
 }

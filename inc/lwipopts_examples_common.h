@@ -36,9 +36,9 @@
 #define LWIP_NETIF_LINK_CALLBACK    1
 #define LWIP_NETIF_HOSTNAME         1
 #define LWIP_NETCONN                0
-#define MEM_STATS                   0
+#define MEM_STATS                   1
 #define SYS_STATS                   0
-#define MEMP_STATS                  0
+#define MEMP_STATS                  1
 #define LINK_STATS                  0
 // #define ETH_PAD_SIZE                2
 #define LWIP_CHKSUM_ALGORITHM       3
