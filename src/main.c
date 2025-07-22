@@ -165,19 +165,19 @@ int main() {
             ssd1306_draw_string(&ssd, "ESTACAO", 4, 6);
             ssd1306_draw_string(&ssd, "METEOROLOGICA", 4, 14);
             ssd1306_line(&ssd, 3, 23, 123, 23, true); // linha horizontal - primeira
-            ssd1306_line(&ssd, 61, 23, 61, 63, true); // linha vertical
+            ssd1306_line(&ssd, 51, 23, 51, 63, true); // linha vertical
             ssd1306_draw_string(&ssd, "TEMP", 4, 25);
             sprintf(str_tmp, "%.1fC", sensors_data.temperature);
-            ssd1306_draw_string(&ssd, str_tmp, 64, 25);
+            ssd1306_draw_string(&ssd, str_tmp, 54, 25);
             ssd1306_draw_string(&ssd, "UMID", 4, 35);
             sprintf(str_umi, "%.1f%%", sensors_data.humidity);
-            ssd1306_draw_string(&ssd, str_umi, 64, 35);
+            ssd1306_draw_string(&ssd, str_umi, 54, 35);
             ssd1306_draw_string(&ssd, "ALTI", 4, 45);
             sprintf(str_alt, "%.1fm", sensors_data.altitude);
-            ssd1306_draw_string(&ssd, str_alt, 64, 45);
+            ssd1306_draw_string(&ssd, str_alt, 54, 45);
             ssd1306_draw_string(&ssd, "PRES", 4, 55);
             sprintf(str_pres, "%.1fhPa", sensors_data.pressure);
-            ssd1306_draw_string(&ssd, str_pres, 64, 55);
+            ssd1306_draw_string(&ssd, str_pres, 54, 55);
             ssd1306_send_data(&ssd);
 
         sleep_ms(200);
